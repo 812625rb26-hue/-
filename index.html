@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Shooter Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+
+
+
+        :root {
+            --bg-dark: #090d16;
+            --panel-bg: #111827;
+            --display-bg: #030712;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-neon: #38bdf8;
+            --rpg-border: #facc15;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        /* 全画面モードでのレイアウト最適化 */
+        :fullscreen body {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        :fullscreen #app-container {
+            max-width: 100vw !important;
+            height: 100vh !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .btn-key {
+            transition: all 0.1s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .btn-key:active, .btn-key.active-key {
+            transform: translateY(2px);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+            filter: brightness(1.25);
+        }
+
+        canvas {
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-2 sm:p-4">
+
+    <!-- メインカードコンテナ -->
+    <div id="app-container" class="w-full max-w-lg bg-slate-900 rounded-3xl border border-slate-800 shadow-2xl p-4 sm:p-5 flex flex-col gap-3 transition-all duration-300">
+        
+        <!-- ヘッダー (ナビゲーション ＆ 全画面ボタン) -->
+        <div class="flex items-center justify-between gap-2">
+            <!-- タブ切り替えボタン -->
+            <div class="flex bg-slate-950 p-1 rounded-xl flex-1 border border-slate-800">
+                <button id="tab-calc" onclick="switchTab('calc')" class="flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-calculator mr-1"></i>電卓 <span class="hidden sm:inline text-[10px] opacity-70">(1)</span>
+                </button>
+                <button id="tab-game" onclick="switchTab('game')" class="flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-rocket mr-1 text-sky-400"></i>シューティング <span class="hidden sm:inline text-[10px] opacity-70">(2)</span>
+                </button>
+                <button id="tab-shop" onclick="switchTab('shop')" class="flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition-all text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-store mr-1 text-emerald-400"></i>ショップ <span class="hidden sm:inline text-[10px] opacity-70">(3)</span>
+                </button>
+            </div>
+
+            <!-- 全画面ボタン -->
+            <button onclick="toggleFullscreen()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg transition flex items-center gap-1 text-xs sm:text-sm" title="全画面表示">
+                <i class="fa-solid fa-expand"></i> <span class="hidden sm:inline">全画面</span>
+            </button>
+        </div>
+
+        <!-- ================= 1. 電卓モード ================= -->
+        <div id="mode-calc" class="flex flex-col gap-3 flex-1">
+            <!-- ディスプレイ -->
+            <div class="bg-black/80 p-4 rounded-2xl border border-slate-800 text-right min-h-[110px] flex flex-col justify-between shadow-inner">
+                <div id="calc-expr" class="text-slate-400 text-base sm:text-lg min-h-[1.5em] break-all overflow-x-auto"></div>
+                <div id="calc-res" class="text-3xl sm:text-4xl font-bold text-sky-400 break-all tracking-wider">0</div>
+            </div>
+
+            <!-- キーパッド -->
+            <div class="grid grid-cols-4 gap-2 flex-1">
+                <button onclick="calcAppend('(')" data-key="(" class="btn-key bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold p-3 sm:p-4 rounded-xl text-lg sm:text-xl font-mono">(</button>
+                <button onclick="calcAppend(')')" data-key=")" class="btn-key bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold p-3 sm:p-4 rounded-xl text-lg sm:text-xl font-mono">)</button>
+                <button onclick="calcAppend('√(')" data-key="r" class="btn-key bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold p-3 sm:p-4 rounded-xl text-lg sm:text-xl font-mono">√</button>
+                <button onclick="calcAppend('^')" data-key="^" class="btn-key bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold p-3 sm:p-4 rounded-xl text-lg sm:text-xl font-mono">^</button>
+
+                <button onclick="calcClear()" data-key="Escape" class="btn-key bg-rose-600 hover:bg-rose-500 text-white font-bold p-3 sm:p-4 rounded-xl text-lg sm:text-xl">AC</button>
+                <button onclick="calcDel()" data-key="Backspace" class="btn-key bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold p-3 sm:p-4 rounded-xl text-lg sm:text-xl"><i class="fa-solid fa-backspace"></i></button>
+                <button onclick="calcAppend('%')" data-key="%" class="btn-key bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold p-3 sm:p-4 rounded-xl text-lg sm:text-xl">%</button>
+                <button onclick="calcAppend('÷')" data-key="/" class="btn-key bg-blue-600 hover:bg-blue-500 text-white font-bold p-3 sm:p-4 rounded-xl text-xl font-mono">÷</button>
+
+                <button onclick="calcAppend('7')" data-key="7" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-3 sm:p-4 rounded-xl text-xl">7</button>
+                <button onclick="calcAppend('8')" data-key="8" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-3 sm:p-4 rounded-xl text-xl">8</button>
+                <button onclick="calcAppend('9')" data-key="9" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-3 sm:p-4 rounded-xl text-xl">9</button>
+                <button onclick="calcAppend('×')" data-key="*" class="btn-key bg-blue-600 hover:bg-blue-500 text-white font-bold p-3 sm:p-4 rounded-xl text-xl font-mono">×</button>
+
+                <button onclick="calcAppend('4')" data-key="4" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-3 sm:p-4 rounded-xl text-xl">4</button>
+                <button onclick="calcAppend('5')" data-key="5" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-3 sm:p-4 rounded-xl text-xl">5</button>
+                <button onclick="calcAppend('6')" data-key="6" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-3 sm:p-4 rounded-xl text-xl">6</button>
+                <button onclick="calcAppend('-')" data-key="-" class="btn-key bg-blue-600 hover:bg-blue-500 text-white font-bold p-3 sm:p-4 rounded-xl text-xl font-mono">-</button>
+
+                <button onclick="calcAppend('1')" data-key="1" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-3 sm:p-4 rounded-xl text-xl">1</button>
+                <button onclick="calcAppend('2')" data-key="2" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-3 sm:p-4 rounded-xl text-xl">2</button>
+                <button onclick="calcAppend('3')" data-key="3" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-3 sm:p-4 rounded-xl text-xl">3</button>
+                <button onclick="calcAppend('+')" data-key="+" class="btn-key bg-blue-600 hover:bg-blue-500 text-white font-bold p-3 sm:p-4 rounded-xl text-xl font-mono">+</button>
+
+                <button onclick="calcAppend('0')" data-key="0" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-3 sm:p-4 rounded-xl text-xl col-span-2">0</button>
+                <button onclick="calcAppend('.')" data-key="." class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-3 sm:p-4 rounded-xl text-xl">.</button>
+                <button onclick="calcExec()" data-key="Enter" class="btn-key bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-3 sm:p-4 rounded-xl text-2xl">=</button>
+            </div>
+        </div>
+
+        <!-- ================= 2. シューティングゲームモード ================= -->
+        <div id="mode-game" class="hidden flex-col gap-2 flex-1">
+            <!-- ゲーム画面 (Canvas) -->
+            <div class="relative w-full aspect-[4/3] max-h-[220px] sm:max-h-[280px] bg-black rounded-2xl border-2 border-sky-500/50 overflow-hidden shadow-lg shadow-sky-500/10">
+                <canvas id="game-canvas" class="w-full h-full block"></canvas>
+                <!-- HUD Overlays -->
+                <div class="absolute top-2 left-3 right-3 flex justify-between items-center text-xs font-bold font-mono text-sky-300 pointer-events-none">
+                    <div>SCORE: <span id="hud-score" class="text-white text-sm">0</span></div>
+                    <div>GOLD: <span id="hud-gold" class="text-amber-400 text-sm">0</span> G</div>
+                    <div>HP: <span id="hud-hp" class="text-emerald-400 text-sm">100</span></div>
+                </div>
+            </div>
+
+            <!-- 問題 ＆ 解答入力領域 -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-center flex flex-col justify-center min-h-[65px] relative shadow-inner">
+                <div id="game-question" class="text-xs sm:text-sm text-slate-300 font-bold mb-1">問題読み込み中...</div>
+                <div id="game-answer" class="text-xl sm:text-2xl font-bold text-sky-400 h-7 font-mono tracking-wider"></div>
+            </div>
+
+            <!-- テンキー ＆ 発射ボタン -->
+            <div class="grid grid-cols-4 gap-2">
+                <button onclick="gameInput('7')" data-key="7" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-2.5 rounded-xl text-lg">7</button>
+                <button onclick="gameInput('8')" data-key="8" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-2.5 rounded-xl text-lg">8</button>
+                <button onclick="gameInput('9')" data-key="9" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-2.5 rounded-xl text-lg">9</button>
+                <button onclick="gameDel()" data-key="Backspace" class="btn-key bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold p-2.5 rounded-xl text-lg"><i class="fa-solid fa-backspace"></i></button>
+
+                <button onclick="gameInput('4')" data-key="4" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-2.5 rounded-xl text-lg">4</button>
+                <button onclick="gameInput('5')" data-key="5" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-2.5 rounded-xl text-lg">5</button>
+                <button onclick="gameInput('6')" data-key="6" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-2.5 rounded-xl text-lg">6</button>
+                <button onclick="gameInput('-')" data-key="-" class="btn-key bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold p-2.5 rounded-xl text-lg font-mono">(-)</button>
+
+                <button onclick="gameInput('1')" data-key="1" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-2.5 rounded-xl text-lg">1</button>
+                <button onclick="gameInput('2')" data-key="2" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-2.5 rounded-xl text-lg">2</button>
+                <button onclick="gameInput('3')" data-key="3" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-2.5 rounded-xl text-lg">3</button>
+                <button onclick="gameInput('.')" data-key="." class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-2.5 rounded-xl text-lg">.</button>
+
+                <button onclick="gameInput('0')" data-key="0" class="btn-key bg-slate-800/80 hover:bg-slate-700 text-white font-bold p-2.5 rounded-xl text-lg col-span-2">0</button>
+                <button id="btn-game-shoot" onclick="gameShoot()" data-key="Enter" class="btn-key bg-sky-500 hover:bg-sky-400 text-slate-950 font-extrabold p-2.5 rounded-xl text-sm sm:text-base col-span-2 shadow-lg shadow-sky-500/20">
+                    <i class="fa-solid fa-crosshairs mr-1"></i> 発射 (Enter)
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= 3. ショップモード ================= -->
+        <div id="mode-shop" class="hidden flex-col gap-3 flex-1">
+            <div class="bg-black border-2 border-amber-400/80 rounded-xl p-3 flex justify-between items-center text-white">
+                <span class="text-xs sm:text-sm font-bold"><i class="fa-solid fa-coins text-amber-400 mr-1"></i>所持ゴールド:</span>
+                <span class="text-xl sm:text-2xl font-extrabold text-amber-400 font-mono"><span id="shop-gold">0</span> G</span>
+            </div>
+
+            <!-- 自機アイテム一覧 -->
+            <div class="grid grid-cols-2 gap-3 overflow-y-auto max-h-[320px] p-1" id="shop-grid">
+                <!-- JavaScriptで描画 -->
+            </div>
+        </div>
+
+        <!-- フッターガイド -->
+        <div class="text-center text-[10px] sm:text-xs text-slate-500 border-t border-slate-800 pt-2">
+            ⌨️ テンキー操作対応 | 1~3: モード切替 | Enter: 発射/計算 | Backspace: 削除
+        </div>
+    </div>
+
+    <script>
+        /* ================= 状態管理 ================= */
+        let currentMode = 'calc';
+        let gold = 0;
+        let score = 0;
+
+        /* 電卓状態 */
+        let calcExpr = '';
+        let isCalculated = false;
+
+        /* 自機ショップデータ */
+        const ships = [
+            { id: 'ship_fighter', icon: '🚀', name: 'ファイター', price: 0, unlocked: true, color: '#38bdf8' },
+            { id: 'ship_ufo', icon: '🛸', name: 'UFO', price: 50, unlocked: false, color: '#a855f7' },
+            { id: 'ship_dragon', icon: '🐉', name: 'ドラゴン', price: 120, unlocked: false, color: '#ef4444' },
+            { id: 'ship_phoenix', icon: '🦅', name: 'フェニックス', price: 250, unlocked: false, color: '#f59e0b' },
+            { id: 'ship_mecha', icon: '🤖', name: 'メハメカ', price: 500, unlocked: false, color: '#10b981' }
+        ];
+        let currentShip = ships[0];
+
+        /* 全画面切り替え */
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        function switchTab(mode) {
+            currentMode = mode;
+            ['calc', 'game', 'shop'].forEach(m => {
+                const tabBtn = document.getElementById(`tab-${m}`);
+                const modeEl = document.getElementById(`mode-${m}`);
+                if (m === mode) {
+                    tabBtn.classList.add('bg-slate-800', 'text-white');
+                    tabBtn.classList.remove('text-slate-400');
+                    modeEl.classList.remove('hidden');
+                    modeEl.classList.add('flex');
+                } else {
+                    tabBtn.classList.remove('bg-slate-800', 'text-white');
+                    tabBtn.classList.add('text-slate-400');
+                    modeEl.classList.add('hidden');
+                    modeEl.classList.remove('flex');
+                }
+            });
+
+            if (mode === 'game') initGameCanvas();
+            if (mode === 'shop') renderShop();
+        }
+
+        /* ================= 1. 電卓機能 ================= */
+        const calcExprEl = document.getElementById('calc-expr');
+        const calcResEl = document.getElementById('calc-res');
+
+        function calcAppend(val) {
+            if (isCalculated) {
+                calcExpr = ['+', '-', '×', '÷', '^', '%'].includes(val) ? calcResEl.innerText + val : val;
+                isCalculated = false;
+            } else {
+                calcExpr += val;
+            }
+            calcExprEl.innerText = calcExpr;
+        }
+
+        function calcClear() {
+            calcExpr = '';
+            calcResEl.innerText = '0';
+            calcExprEl.innerText = '';
+            isCalculated = false;
+        }
+
+        function calcDel() {
+            if (isCalculated) { calcClear(); return; }
+            if (calcExpr.endsWith('√(')) calcExpr = calcExpr.slice(0, -2);
+            else calcExpr = calcExpr.slice(0, -1);
+            calcExprEl.innerText = calcExpr;
+        }
+
+        function calcExec() {
+            if (!calcExpr) return;
+            let parsed = calcExpr.replace(/×/g, '*').replace(/÷/g, '/').replace(/\^/g, '**').replace(/%/g, '/100');
+            
+            let prev;
+            do {
+                prev = parsed;
+                parsed = parsed.replace(/√\(([^()]+)\)/g, 'Math.sqrt($1)');
+                parsed = parsed.replace(/√(\d+(?:\.\d+)?)/g, 'Math.sqrt($1)');
+            } while (parsed !== prev);
+
+            const openB = (parsed.match(/\(/g) || []).length;
+            const closeB = (parsed.match(/\)/g) || []).length;
+            if (openB > closeB) parsed += ')'.repeat(openB - closeB);
+
+            try {
+                const res = new Function(`'use strict'; return (${parsed})`)();
+                if (typeof res !== 'number' || isNaN(res) || !isFinite(res)) throw new Error();
+                const finalRes = Number(Math.round(res + 'e10') + 'e-10');
+                calcResEl.innerText = finalRes;
+                isCalculated = true;
+            } catch {
+                calcResEl.innerText = 'エラー';
+                isCalculated = true;
+            }
+        }
+
+        /* ================= 2. シューティングゲーム ＝ Canvas & ロジック ================= */
+        let canvas, ctx;
+        let playerHp = 100;
+        let gameInputAns = '';
+        let currentQuiz = { q: '', a: 0 };
+        let bullets = [];
+        let enemyBullets = [];
+        let particles = [];
+        let stars = [];
+        let activeEnemies = [];
+        let animFrameId = null;
+
+        function generateInstantMath() {
+            const types = ['pos_neg', 'algebra', 'equation'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            if (type === 'pos_neg') {
+                const a = (Math.floor(Math.random() * 18) - 9);
+                const b = (Math.floor(Math.random() * 18) - 9);
+                const op = ['+', '-', '×'][Math.floor(Math.random() * 3)];
+                let q = '', ans = 0;
+                if (op === '+') { q = `(${a}) + (${b})`; ans = a + b; }
+                else if (op === '-') { q = `(${a}) - (${b})`; ans = a - b; }
+                else { q = `(${a}) × (${b})`; ans = a * b; }
+                return { q, a: ans };
+            } else if (type === 'algebra') {
+                const coeff1 = Math.floor(Math.random() * 6) + 2;
+                const coeff2 = Math.floor(Math.random() * 4) + 1;
+                const x = Math.floor(Math.random() * 8) - 3;
+                const isAdd = Math.random() > 0.5;
+                if (isAdd) {
+                    return { q: `${coeff1}x + ${coeff2}x  (x = ${x})`, a: (coeff1 + coeff2) * x };
+                } else {
+                    return { q: `${coeff1}x - ${coeff2}x  (x = ${x})`, a: (coeff1 - coeff2) * x };
+                }
+            } else {
+                const x = Math.floor(Math.random() * 16) - 8;
+                const a = Math.floor(Math.random() * 6) + 2;
+                const b = Math.floor(Math.random() * 16) - 8;
+                const c = a * x + b;
+                return { q: `${a}x ${b >= 0 ? '+ ' + b : '- ' + Math.abs(b)} = ${c} の解 x`, a: x };
+            }
+        }
+
+        function nextQuestion() {
+            currentQuiz = generateInstantMath();
+            document.getElementById('game-question').innerText = `${currentQuiz.q} = ?`;
+            gameInputAns = '';
+            document.getElementById('game-answer').innerText = '';
+        }
+
+        function initGameCanvas() {
+            canvas = document.getElementById('game-canvas');
+            ctx = canvas.getContext('2d');
+            
+            // アスペクト比に合わせてCanvasの解像度を設定
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width || 400;
+            canvas.height = rect.height || 300;
+
+            // 背景の星を初期化
+            stars = [];
+            for (let i = 0; i < 40; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2 + 1,
+                    speed: Math.random() * 1.5 + 0.5
+                });
+            }
+
+            if (activeEnemies.length === 0) {
+                spawnEnemyShip();
+            }
+
+            nextQuestion();
+
+            if (!animFrameId) {
+                gameLoop();
+            }
+        }
+
+        function spawnEnemyShip() {
+            const enemyTypes = [
+                { icon: '👾', name: 'エイリアン', hp: 1 },
+                { icon: '🛸', name: 'バトルUFO', hp: 1 },
+                { icon: '👹', name: '鬼型戦艦', hp: 1 }
+            ];
+            const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+            activeEnemies = [{
+                x: canvas.width / 2,
+                y: 50,
+                icon: type.icon,
+                vx: (Math.random() - 0.5) * 2,
+                vy: 0,
+                radius: 24
+            }];
+        }
+
+        function gameInput(v) {
+            if (currentMode !== 'game') return;
+            gameInputAns += v;
+            document.getElementById('game-answer').innerText = gameInputAns;
+        }
+
+        function gameDel() {
+            if (currentMode !== 'game') return;
+            gameInputAns = gameInputAns.slice(0, -1);
+            document.getElementById('game-answer').innerText = gameInputAns;
+        }
+
+        function gameShoot() {
+            if (currentMode !== 'game' || gameInputAns === '') return;
+
+            const playerX = canvas ? canvas.width / 2 : 200;
+            const playerY = canvas ? canvas.height - 35 : 250;
+
+            if (Number(gameInputAns) === currentQuiz.a) {
+                // 正解！ビーム発射
+                bullets.push({
+                    x: playerX,
+                    y: playerY,
+                    vy: -8,
+                    color: currentShip.color
+                });
+
+                // 正解判定後に少し遅れて敵撃破＆正解更新
+                setTimeout(() => {
+                    score += 100;
+                    gold += 20;
+                    updateHUD();
+
+                    // 爆発エフェクト
+                    if (activeEnemies.length > 0) {
+                        const target = activeEnemies[0];
+                        createExplosion(target.x, target.y);
+                    }
+
+                    spawnEnemyShip();
+                    nextQuestion();
+                }, 300);
+
+            } else {
+                // 不正解！敵からの反撃弾
+                if (activeEnemies.length > 0) {
+                    const enemy = activeEnemies[0];
+                    enemyBullets.push({
+                        x: enemy.x,
+                        y: enemy.y,
+                        vx: (playerX - enemy.x) * 0.05,
+                        vy: 5
+                    });
+                }
+
+                playerHp = Math.max(0, playerHp - 15);
+                updateHUD();
+
+                if (playerHp <= 0) {
+                    setTimeout(() => {
+                        playerHp = 100;
+                        updateHUD();
+                        nextQuestion();
+                    }, 1000);
+                } else {
+                    nextQuestion();
+                }
+            }
+        }
+
+        function createExplosion(x, y) {
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    size: Math.random() * 4 + 2,
+                    color: ['#f59e0b', '#ef4444', '#38bdf8', '#ffffff'][Math.floor(Math.random() * 4)],
+                    life: 25
+                });
+            }
+        }
+
+        function updateHUD() {
+            document.getElementById('hud-score').innerText = score;
+            document.getElementById('hud-gold').innerText = gold;
+            document.getElementById('hud-hp').innerText = playerHp;
+            document.getElementById('shop-gold').innerText = gold;
+        }
+
+        function gameLoop() {
+            if (!ctx || !canvas) {
+                animFrameId = requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // 背景消去
+            ctx.fillStyle = '#030712';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 背景の星描画
+            ctx.fillStyle = '#ffffff';
+            stars.forEach(s => {
+                s.y += s.speed;
+                if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
+                ctx.fillRect(s.x, s.y, s.size, s.size);
+            });
+
+            // 敵移動 ＆ 描画
+            activeEnemies.forEach(e => {
+                e.x += e.vx;
+                if (e.x < 30 || e.x > canvas.width - 30) e.vx *= -1;
+
+                ctx.font = '32px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(e.icon, e.x, e.y);
+            });
+
+            // 自機描画
+            const playerX = canvas.width / 2;
+            const playerY = canvas.height - 30;
+            ctx.font = '36px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(currentShip.icon, playerX, playerY);
+
+            // プレイヤー弾移動 ＆ 描画
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                b.y += b.vy;
+
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = b.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = b.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                if (b.y < -10) bullets.splice(i, 1);
+            }
+
+            // 敵弾移動 ＆ 描画
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                const eb = enemyBullets[i];
+                eb.x += eb.vx;
+                eb.y += eb.vy;
+
+                ctx.beginPath();
+                ctx.arc(eb.x, eb.y, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#ef4444';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#ef4444';
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                if (eb.y > canvas.height + 10) enemyBullets.splice(i, 1);
+            }
+
+            // パーティクル描画
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            animFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        /* ================= 3. ショップ機能 ================= */
+        function renderShop() {
+            document.getElementById('shop-gold').innerText = gold;
+            const grid = document.getElementById('shop-grid');
+            grid.innerHTML = '';
+
+            ships.forEach(item => {
+                const card = document.createElement('div');
+                const isEquipped = (currentShip.id === item.id);
+                card.className = `bg-slate-800/90 border-2 ${isEquipped ? 'border-sky-400 bg-sky-950/20' : 'border-slate-700'} rounded-2xl p-3 flex flex-col items-center gap-2 text-center transition`;
+
+                let btnHtml = '';
+                if (item.unlocked) {
+                    if (isEquipped) {
+                        btnHtml = `<button disabled class="w-full py-1.5 bg-slate-700 text-white font-bold rounded-xl text-xs">装備中</button>`;
+                    } else {
+                        btnHtml = `<button onclick="equipShip('${item.id}')" class="w-full py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-xs shadow">装備する</button>`;
+                    }
+                } else {
+                    btnHtml = `<button onclick="buyShip('${item.id}')" class="w-full py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-xl text-xs shadow">${item.price} G</button>`;
+                }
+
+                card.innerHTML = `
+                    <div class="text-4xl my-1">${item.icon}</div>
+                    <div class="text-xs font-bold text-white">${item.name}</div>
+                    ${btnHtml}
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function buyShip(id) {
+            const item = ships.find(s => s.id === id);
+            if (gold >= item.price) {
+                gold -= item.price;
+                item.unlocked = true;
+                equipShip(id);
+                renderShop();
+                updateHUD();
+            } else {
+                alert('ゴールド（G）が足りません！シューティングゲームで敵を倒して稼ぎましょう。');
+            }
+        }
+
+        function equipShip(id) {
+            currentShip = ships.find(s => s.id === id);
+            renderShop();
+        }
+
+        /* ================= キーボード連動 ================= */
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+
+            const activeContainer = document.getElementById(`mode-${currentMode}`);
+            let keyQuery = e.key;
+            if (e.key === '=') keyQuery = 'Enter';
+
+            const btnTarget = activeContainer.querySelector(`button[data-key="${keyQuery}"]`);
+            if (btnTarget) {
+                btnTarget.classList.add('active-key');
+                setTimeout(() => btnTarget.classList.remove('active-key'), 120);
+            }
+
+            if (e.key === 'F11' || e.key === 'F5') return;
+
+            // タブ切り替え
+            if (e.key === '1') switchTab('calc');
+            else if (e.key === '2') switchTab('game');
+            else if (e.key === '3') switchTab('shop');
+
+            // 電卓モード
+            if (currentMode === 'calc') {
+                if (e.key >= '0' && e.key <= '9') calcAppend(e.key);
+                else if (e.key === '.') calcAppend('.');
+                else if (e.key === '+') calcAppend('+');
+                else if (e.key === '-') calcAppend('-');
+                else if (e.key === '*') calcAppend('×');
+                else if (e.key === '/') { e.preventDefault(); calcAppend('÷'); }
+                else if (e.key === '%') calcAppend('%');
+                else if (e.key === '^') calcAppend('^');
+                else if (e.key === '(' || e.key === ')') calcAppend(e.key);
+                else if (e.key === 'r' || e.key === 'R') calcAppend('√(');
+                else if (e.key === 'Enter' || e.key === '=') { e.preventDefault(); calcExec(); }
+                else if (e.key === 'Backspace') calcDel();
+                else if (e.key === 'Escape') calcClear();
+            }
+            // シューティングゲームモード
+            else if (currentMode === 'game') {
+                if (e.key >= '0' && e.key <= '9') gameInput(e.key);
+                else if (e.key === '.') gameInput('.');
+                else if (e.key === '-') gameInput('-');
+                else if (e.key === 'Backspace') gameDel();
+                else if (e.key === 'Enter') { e.preventDefault(); gameShoot(); }
+            }
+        });
+
+        // 初期表示
+        switchTab('calc');
+    </script>
+</body>
+</html>
